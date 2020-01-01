@@ -6,14 +6,14 @@
 # install for Hobart Makers 
 # Changed to use whiptail for a gui. Lots of bits of raspi-config used here :-)
 #
-# All software normally installed byt the RPI-CNC scripts is covered
+# All software normally installed by the RPI-CNC scripts is covered
 # except cncjs which seems to have a problem with the version of nodejs
-# installed for laserweb#
+# installed for laserweb
 #----------------------------------------------------------------------
 # Set variables we need later.
 MENU_TITLE="Protoneer Pi Hat Installation" 
 JAVA_VER="openjdk-9-jre"
-REQUIRED_OS_VER="buster"
+OS_VER="buster"
 # Not all Protoneer resouces are required.
 RESOURCES="/home/pi//Protoneer/protoneer/resources"
 
@@ -145,7 +145,7 @@ fi
 }
 #-------------------------------------------------
 function do_laserweb() {
-# No downlod needed, install via 'git clone'
+#  install via 'git clone'
 TITLE="Laserweb4"
 LW_INSTALL_DIR="lw.comm-server"
 whiptail --msgbox --title "$TITLE" '
@@ -163,8 +163,7 @@ do_nodejs
 cd ~
 # check if already installed option to reinstall?
 if [ -d "${LW_INSTALL_DIR}" ]; then
-    # Add YSE/NO buttons so we can default to NO for the answer. Change logic of test
-    QUERY=$(whiptail  --title "$TITLE"   --yesno --yes-button NO --no-button YES "$TITLE has already been\ installed. Do you want to reinstall it? ." 8 78 3>&1 1>&2 2>&3; echo $?)
+  QUERY=$(whiptail  --title "$TITLE"   --yesno --yes-button NO --no-button YES "$TITLE has already been\ installed. Do you want to reinstall it? ." 8 78 3>&1 1>&2 2>&3; echo $?)
 fi
     if [ $QUERY = 1 ] || [ ! -d "${LW_INSTALL_DIR}" ]; then
      rm -rf ${LW_INSTALL_DIR}
@@ -354,7 +353,7 @@ fi
 #
 # Check installed OS is buster
 INSTALLED_OS_VER=$(lsb_release -c|cut -d : -f 2 |xargs)
-if [ "$INSTALLED_OS_VER"  !=  "$REQUIRED_OS_VER" ]; then
+if [ "$INSTALLED_OS_VER"  !=  "$OS_VER" ]; then
 
 echo " pi-install has only been tested with buster, not $INSTALLED_OS_VER"
 exit 1
