@@ -15,7 +15,7 @@ MENU_TITLE="Protoneer Pi Hat Installation"
 JAVA_VER="openjdk-9-jre"
 OS_VER="buster"
 # Not all Protoneer resouces are required.
-RESOURCES="/home/pi//Protoneer/protoneer/resources"
+RESOURCES="/home/pi/protoneer/resources"
 
 
 # Define our functions
@@ -44,6 +44,7 @@ type java  >/dev/null 2>&1
 if [ $? = 1 ]; then 
     sudo apt install -y  ${JAVA_VER}
 fi
+unset QUERY
 }
 #--------------------------------------------------
 function do_about() {
@@ -66,19 +67,21 @@ function do_nodejs() {
 # alternative do_nodejs function
 
 # Install nodejs and npm - See if they are already installed
+#hash npm 2>/dev/null
+#type npm 2>/dev/null
+#if [ $? != 0 ]; then
+#    sudo apt -y install npm
+#   NPM_VER=$(npm -v 2>/dev/null)
+#fi
+
 hash node 2>/dev/null
 type node 2>/dev/null
 if [ $?  =  1 ]; then
     sudo apt -y install nodejs
    NODE_VER=$(node -v)
 fi
+unset QUERY
 
-hash npm 2>/dev/null
-type npm 2>/dev/null
-if [ $? = 1 ]; then
-    sudo apt -y install npm
-   NPM_VER=$(npm -v)
-fi
 }
 #--------------------------------------------------
 function do_list () {
@@ -101,6 +104,7 @@ whiptail --msgbox --title "$TITLE" "
 the following sofware options are currently installed
 ${SOFTWARE_INSTALLED}
  " 20 70 7
+unset QUERY
 
 }
 #-------------------------------------------------
@@ -142,6 +146,7 @@ if [ $? != 0 ]; then
 else 
     whiptail  --msgbox  " minicom was  already installed." 20 70 1 
 fi
+unset QUERY
 }
 #-------------------------------------------------
 function do_laserweb() {
@@ -163,15 +168,16 @@ do_nodejs
 cd ~
 # check if already installed option to reinstall?
 if [ -d "${LW_INSTALL_DIR}" ]; then
-  QUERY=$(whiptail  --title "$TITLE"   --yesno --yes-button NO --no-button YES "$TITLE has already been\ installed. Do you want to reinstall it? ." 8 78 3>&1 1>&2 2>&3; echo $?)
+  QUERY=$(whiptail  --title "$TITLE"   --yesno --defaultno  "$TITLE has already been installed. Do you want to reinstall it? ." 20 70 1 3>&1 1>&2 2>&3; echo $?)
 fi
-    if [ $QUERY = 1 ] || [ ! -d "${LW_INSTALL_DIR}" ]; then
+    if [ "$QUERY" = 0 ] || [ ! -d "${LW_INSTALL_DIR}" ]; then
      rm -rf ${LW_INSTALL_DIR}
      git clone http://github.com/LaserWeb/lw.comm-server.git
      # there may be a problem in that the dotenv node module is not installed
      # Find and and fix if possible
      cd ${LW_INSTALL_DIR}
      npm install dotenv
+     npm install serialport --unsafe-perm --build-from-source
      npm install
      echo 'RESET_ON_CONNECT=1' > .env
      # The .env doesn't seem to work so edit config.js directly
@@ -183,6 +189,7 @@ fi
 
       cp ${RESOURCES}/shortcuts/LaserWeb4.Desktop ~/Desktop
 fi
+unset QUERY
 }
 #-------------------------------------------------
 function do_arduino_version() {
@@ -196,6 +203,7 @@ function do_arduino_version() {
   cd ..
   rm -rf ProtoArd
   whiptail  --msgbox  --title "$TITLE"  "Latest Arduino IDE : $ARDUINO_VERSION "  20 70 1 
+unset QUERY
 }
 #-------------------------------------------------
 function do_arduino_install() {
@@ -247,6 +255,7 @@ chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/autoreset328
 chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/autoreset2560
 
  fi
+unset QUERY
 }
 #-------------------------------------------------
 function do_bcnc() {
@@ -263,11 +272,11 @@ this option will perform the following actions:
 cd ~
 # Install python version
 if [ -d "${bCNC_INSTALL_DIR}" ]; then
-    QUERY=$(whiptail  --yesno --title="$TITLE" --yes-button NO --no-button YES  'bCNC already installed. Do you want to reinstall? 
+    QUERY=$(whiptail  --yesno --title="$TITLE" --defaultno  'bCNC already installed. Do you want to reinstall? 
 
 	 -WARNING: any saved bCNC configurations may be lost '  20 70 1 3>&1 1>&2 2>&3; echo $?)
 fi
-if [ $QUERY = 1 ] || [ ! -d "${bCNC_INSTALL_DIR}" ]; then 
+if [ "$QUERY" = 0 ] || [ ! -d "${bCNC_INSTALL_DIR}" ]; then 
 	mkdir -p ${bCNC_INSTALL_DIR}
         sudo pip2 install --upgrade bCNC
 	if [  ! -d .bCNC ]; then
@@ -279,6 +288,7 @@ EOF
 	fi
         cp ${RESOURCES}/shortcuts/bCNC.Desktop ~/Desktop
     fi
+unset QUERY
 }
 #-------------------------------------------------
 function do_ugs() {
@@ -296,10 +306,9 @@ this option will perform the following actions:
 # Home again
 cd ~
 if [ -d  "${UGS_INSTALL_DIR}" ]; then
-    # it may be installed so give option to reinstall
-    QUERY=$(whiptail --yesno --yes-button NO --no-button YES --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
+    QUERY=$(whiptail --yesno --defaultno  --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
 fi
-if [ $QUERY = 1 ] || [ ! -d "${UGS_INSTALL_DIR}" ]; then
+if [ "$QUERY" = 0 ] || [ ! -d "${UGS_INSTALL_DIR}" ]; then
 mkdir -p ${UGS_INSTALL_DIR}
 cd ${UGS_INSTALL_DIR}
 # Can't wget to stdout for zip files :-(
@@ -313,6 +322,7 @@ cp ${RESOURCES}/shortcuts/UGS.Desktop ~/Desktop
 fi
 # Check for java
 java_install
+unset QUERY
 }
 #-------------------------------------------------
 function do_chillipepr() {
@@ -333,19 +343,20 @@ cd ~
 # Installed into ~/ChiliPeppr
 if [ -d  "${CHI_INSTALL_DIR}" ]; then
     # it may be installed so give option to reinstall
-    QUERY=$(whiptail --yesno --yes-button NO --no-button YES --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
+    QUERY=$(whiptail --yesno --defaultno --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
 fi
-if [ $QUERY = 1 ] || [ ! -d "${CHI_INSTALL_DIR}" ]; then
+if [ "$QUERY" = 0 ] || [ ! -d "${CHI_INSTALL_DIR}" ]; then
     mkdir -p ${CHI_INSTALL_DIR} # silently fails if directory exists
     cd ${CHI_INSTALL_DIR}
     # stop the service if running
-    sudo /etc/init.d/serial-port-json-server stop
+    sudo /etc/init.d/serial-port-json-server stop </dev/null
     # No saved tar file
     wget  ${CH_DOWNLOAD} -O - |tar xz
     cd serial-port-json-server*
     chmod 777 serial-port-json-server
     sudo ./serial-port-json-server -createstartupscript 2>/dev/null
 fi
+cp ${RESOURCES}/shortcuts/ChiliPeppr.Desktop ~/Desktop
 }
 
 #======================================================================
