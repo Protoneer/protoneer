@@ -14,4 +14,4 @@ use with the RPI-CNC. These include:
 
 Prerequisites for the selected software packages are checked and installed
 as required.
-ALso inclued are the RPI-CNC scripts fro Prontoneer. Check with at [RPI-CNC](https://github.com/Protoneer/RPI-CNC-Config-Scripts.git" Protoneer RPI-CNC") for the latest vesions of these
+ALso inclued are the RPI-CNC scripts fro Prontoneer. Check with at [RPI-CNC](https://github.com/Protoneer/RPI-CNC-Config-Scripts.git) for the latest vesions of these
