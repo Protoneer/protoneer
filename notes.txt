@@ -1,0 +1,45 @@
+Notes for pi-install
+
+This originally started as a need to install Laserweb4 on a Raspberry Pi running on a RPI-CNC connected to a  K40 laser cutter belonging to Hobart Makers.  I had no end of trouble getting it to work so set up a Raspberry Pi with a CNC shield on an Uno with some level shifters so I could work on the issues at home instead of during my limited time in the Hobart Makers facility.  I had no intention of writing a complete install script, I just got a bit carried away :-)
+The installation script, pi-install,  uses whiptail for a text based gui similar to raspi-config. In fact a few bits of raspi-config were 'borrowed'.  Script can run as 'pi' user as few actions require root user. Those that do, are run via sudo in the script. There's no logging of results which could be useful for troubleshooting. Install functions do produce output to the screen.
+The installation image is based on Buster desktop - not the one  'with recommended packages'. Difference is mostly in size of image. A lot of the software would be removed anyway (libreoffice, wolfram, etc). The full image has old versions of nodejs that would have to be replaced with the new version Laserweb4 requires. The image with all software installed is around 4GB and will shrink down to 1.5GB with pishrink.sh. 
+
+All of the actions normally  performed by the scripts provided in RPI-CNC-CONFIG-SCRIPTS are handled by individual functions in pi-install although none of the test scripts have been incorporated into pi-install. Perhaps a separate menu driven program for testing? I found minicom sufficient to perform any testing necessary to get the Raspberry Pi to Uno working. [I would have done more with the test scripts but my Raspberry Pi died :-(. [It was a cast off from Hobart Makers with dead USB and Ethernet so no big loss].
+
+Versions of software installed are hard coded into pi-install. I did try to have the script work out what was the latest and download/install it but sometimes the latest is a beta or otherwise not easily identifiable via a script. (the section I did for auto recognition of Arduino IDE is still in the script but not used)
+Where possible, environment variables are used for the software version  which should make changing the version installed, quite easy.
+
+With the exception of the the setup and Arduino IDE menu selections, all programs offer a reinstall option. There's no option to delete an installed software package.
+
+I've tried where possible to answer or incorporate all of the items in the TODO list in  RPI-CNC-CONFIG-SCRIPTS. See the todo file in the zip archive.
+
+The setup menu option handles all of the steps required to allow use of /dev/ttyAMA0, i.e. modifies cmdline.txt and config.txt, stops gettys and any other program accessing the serial port.
+It also seemed a good place to put the install of minicom. There's no provision to re-reun this option.
+
+bCNC is now a python version. A directory called bCNC is created but not used by bCNC (config file .bCNC is created in /home/pi. The directory is only used to identify that bCNC has been installed. No extra python tools are needed for install/operation as these are part of the Buster image used.
+
+Laserweb4 has received the most testing as it's the one I had a use for :-).  The compile takes a while and does produce a lot of warning or info messages. Initially I did get a fatal error that the dotenv module was not found so added an install for this in the script. The install for laserweb does the addition to systemctl without the manual startup check that the laserweb wiki recommends. I couldn't see and easy way to do this from the script. systemctl status lw.comm-server will check if it is running though.
+
+Arduino IDE is installed at the latest version (variable can be changed as required). The avrdude-autoeset script is updated with the current version information via the subst command. . When running the install.sh script that is part of the Arduino IDE, several error messages are produced from xdg regarding missing icons. This doesn't cause a problem with the IDE installation  but pi-install sees the error return code and warns there was a problems. Could cause some confusion.
+
+Chilipeppr seems to required that you access it via the chilipeppr.com website and the jpadie workspace profile. I couldn't see if there was a local (to the Raspberry Pi) server included as part of the Protoneer install. It does work fine from  chilipeppr.com and can scan and recognise Chilipeppr installations on the local network and connect to /dev/ttyAMA0 correctly.
+
+All install functions copy (modified)  desktop files onto the Desktop but they are not sorted in any particular order.
+
+Regarding this script and it's supporting components. I'm not involved with Protoneer but I did write this using information provided in the RPI-CNC-CONFIG-SCRIPTS git repository from Protoneer. All errors and mistakes however are mine. You can used this script and supplied configuration files as you see fit. All care taken, no responsibility accepted!
+
+Things to Do
+Install grbl library in arduino
+
+
+Sources
+Original scripts and ideas = Protoneer.co.nz
+Arduino install - thanks to the Arduino forums for the fit based version discovery.
+https://github.com/deanmao/avrdude-rpi
+pishrink.sh - https://github.com/Drewsif/PiShrink
+Chilipepr workspace for grbl - http://chilipeppr.com/jpadie 
+Install for laserweb - https://github.com/LaserWeb/lw.comm-server/wiki/Manual-Installation-(RasPi)
+bCNC - python version, https://github.com/vlachoudis/bCNC
+
+
+
