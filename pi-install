@@ -1,0 +1,408 @@
+#!/bin/bash  
+#
+# GeoffS - Hobart Makers Inc : Thu 26 Dec 19:53:28 AEDT 2019
+#
+# Re-write of pi install script for Protoneer Pi Hat mainly for Laserweb
+# install for Hobart Makers 
+# Changed to use whiptail for a gui. Lots of bits of raspi-config used here :-)
+#
+# All software normally installed byt the RPI-CNC scripts is covered
+# except cncjs which seems to have a problem with the version of nodejs
+# installed for laserweb#
+#----------------------------------------------------------------------
+# Set variables we need later.
+MENU_TITLE="Protoneer Pi Hat Installation" 
+JAVA_VER="openjdk-9-jre"
+REQUIRED_OS_VER="buster"
+# Not all Protoneer resouces are required.
+RESOURCES="/home/pi//Protoneer/protoneer/resources"
+
+
+# Define our functions
+
+# Get terminal info - rows, columns (from raspi-config)
+function calc_wt_size() {
+  # NOTE: it's tempting to redirect stderr to /dev/null, so supress error 
+  # output from tput. However in this case, tput detects neither stdout or 
+  # stderr is a tty and so only gives default 80, 24 values
+  WT_HEIGHT=18
+  WT_WIDTH=$(tput cols)
+
+  if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
+    WT_WIDTH=80
+  fi
+  if [ "$WT_WIDTH" -gt 178 ]; then
+    WT_WIDTH=120
+  fi
+  WT_MENU_HEIGHT=$(($WT_HEIGHT-7))
+}
+#-------------------------------------------------
+function java_install () {
+# Chack if java installed - needed for UGS 
+hash java  >/dev/null 2>&1
+type java  >/dev/null 2>&1
+if [ $? = 1 ]; then 
+    sudo apt install -y  ${JAVA_VER}
+fi
+}
+#--------------------------------------------------
+function do_about() {
+# Information about this install script
+  whiptail  --msgbox --title "$MENU_TITLE"  '
+  This tool provides a straight-forward way of making the
+  necessary changes to the Raspberry Pi to work with RPI-CNC 
+  and to install optional packages. 
+  
+  You should have already run 'raspi-config' to set up the
+  Raspberry Pi to suit your environment. ' 20 70 1 
+# $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT
+}
+#-------------------------------------------------
+function do_nodejs() {
+# Check if npm/node are installed. If not, install it.
+# versions in the Debian repository are not the latest but seem to work OK
+# with Laserweb4. Warnings will be displayed during install of npm/nodejs.
+# Solution to this is to install from the nodesource PPA - see 
+# alternative do_nodejs function
+
+# Install nodejs and npm - See if they are already installed
+hash node 2>/dev/null
+type node 2>/dev/null
+if [ $?  =  1 ]; then
+    sudo apt -y install nodejs
+   NODE_VER=$(node -v)
+fi
+
+hash npm 2>/dev/null
+type npm 2>/dev/null
+if [ $? = 1 ]; then
+    sudo apt -y install npm
+   NPM_VER=$(npm -v)
+fi
+}
+#--------------------------------------------------
+function do_list () {
+TITLE="Protoneer Pi setup"
+SOFTWARE_INSTALLED=""
+cd ~
+# Current list of possible options
+SOFTWARE_OPTIONS=" arduino* bCNC ChiliPeppr lw.comm-server UGS "
+
+for sw in  $SOFTWARE_OPTIONS
+do
+         if [ -d "${sw}" ]; then
+        SOFTWARE_INSTALLED+="	- "
+        SOFTWARE_INSTALLED+=$sw
+        SOFTWARE_INSTALLED+="\n"
+
+    fi
+done
+whiptail --msgbox --title "$TITLE" "
+the following sofware options are currently installed
+${SOFTWARE_INSTALLED}
+ " 20 70 7
+
+}
+#-------------------------------------------------
+function do_setup() {
+TITLE="Raspberry Pi CNC setup"
+whiptail --msgbox --title "$TITLE" '
+this option performs the following actions:   
+
+	- edits /boot/cmdline.txt to remove referneces to ttyS0  
+	- edits /boot/config.txt to anable uart on ttyS1.
+	- stops and disables getty on ttyS0
+	- installs minicom ' 20 70 1
+
+# Check if cmdline has been changed
+if grep -q "serial0" /boot/cmdline.txt; then
+sudo sed -i 's/console=serial0,115200 //g' /boot/cmdline.txt
+    else
+    whiptail  --msgbox  " /boot/cmdline.txt already modified." 20 70 1 
+fi
+if ! grep -q "dtoverlay=miniuart-bt" /boot/config.txt; then
+    sudo sh -c "echo 'dtoverlay=miniuart-bt' >> /boot/config.txt "
+    sudo sh -c "echo 'enable_uart=1' >> /boot/config.txt "
+    sudo sh -c "echo 'dtoverlay=disable-bt' >> /boot/config.txt "
+    # Other changes to config.txt can be inserted here as required
+
+    # Changes to systemd
+    sudo systemctl disable hciuart  
+    sudo systemctl stop serial-getty@ttyS0.service 
+    sudo systemctl disable serial-getty@ttyS0.service 
+else
+    whiptail  --msgbox  " /boot/config.txt already modified." 20 70 1 
+fi
+# Install minicom
+hash minicom >/dev/null 2>&1
+type minicom >/dev/null 2>&1
+if [ $? != 0 ]; then
+    sudo apt install -y minicom
+    cp ${RESOURCES}/shortcuts/minicom.Desktop ~/Desktop
+else 
+    whiptail  --msgbox  " minicom was  already installed." 20 70 1 
+fi
+}
+#-------------------------------------------------
+function do_laserweb() {
+# No downlod needed, install via 'git clone'
+TITLE="Laserweb4"
+LW_INSTALL_DIR="lw.comm-server"
+whiptail --msgbox --title "$TITLE" '
+this option will perform the following actions:   
+
+	- check if nodejs/npm is installed
+	- clone the laserweb git repository
+	- install via npm
+	- enable laserweb via systemd
+	- create Desktop shortcut' 20 70 1
+
+# Check for nodejs/npm
+do_nodejs
+# Always start from home
+cd ~
+# check if already installed option to reinstall?
+if [ -d "${LW_INSTALL_DIR}" ]; then
+    # Add YSE/NO buttons so we can default to NO for the answer. Change logic of test
+    QUERY=$(whiptail  --title "$TITLE"   --yesno --yes-button NO --no-button YES "$TITLE has already been\ installed. Do you want to reinstall it? ." 8 78 3>&1 1>&2 2>&3; echo $?)
+fi
+    if [ $QUERY = 1 ] || [ ! -d "${LW_INSTALL_DIR}" ]; then
+     rm -rf ${LW_INSTALL_DIR}
+     git clone http://github.com/LaserWeb/lw.comm-server.git
+     # there may be a problem in that the dotenv node module is not installed
+     # Find and and fix if possible
+     cd ${LW_INSTALL_DIR}
+     npm install dotenv
+     npm install
+     echo 'RESET_ON_CONNECT=1' > .env
+     # The .env doesn't seem to work so edit config.js directly
+     sed -i 's/ process.env.RESET_ON_CONNECT || 0/ process.env.RESET_ON_CONNECT || 1/' ~/lw.comm-server/config.js
+     sudo cp  lw.comm-server.service /etc/systemd/system
+     sudo systemctl daemon-reload
+     sudo systemctl enable lw.comm-server.service
+     sudo systemctl start lw.comm-server
+
+      cp ${RESOURCES}/shortcuts/LaserWeb4.Desktop ~/Desktop
+fi
+}
+#-------------------------------------------------
+function do_arduino_version() {
+# Get latest version via git, used to build download URL
+  git init ProtoArd >/dev/null  # create empty local repo
+  cd ProtoArd
+  git remote add origin https://github.com/arduino/Arduino.git >/dev/null
+  # Get the releases as sort them, Last one is the latest
+  ARDUINO_VERSION=$(git ls-remote --tags --refs --sort=version:refname  | grep --regexp='refs/tags/[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*.*' |  cut -d '/' -f 3  |tail -1)
+#  export ARDUINO_VERSION # for envsubst
+  cd ..
+  rm -rf ProtoArd
+  whiptail  --msgbox  --title "$TITLE"  "Latest Arduino IDE : $ARDUINO_VERSION "  20 70 1 
+}
+#-------------------------------------------------
+function do_arduino_install() {
+TITLE="Arduino IDE"
+# Used to check current/latest and to get download path
+ARDUINO_VERSION="1.8.10"
+whiptail --msgbox --title "$TITLE" '
+this option will perform the following actions:   
+
+	- checks if arduino IDE is installed
+	- installs modifed avrdude for grbl firmware loading
+	- creates Desktop shortcut ' 20 70 1
+# Get latest version info : deprecated, hardocde version instead
+#do_arduino_version
+# As we hardcode the versions of other software we install, do the same here.
+# No need for getting too clever
+# See if we already have arduino installed
+if [ -d ~/arduino-* ]; then
+    INSTALLED_VERSION=$(ls -d ~/arduino-*|cut -d '/' -f 4|cut -d '-' -f 2)
+    if [ ${INSTALLED_VERSION} == ${ARDUINO_VERSION} ]; then
+        whiptail  --msgbox   "Latest version installed :  ${ARDUINO_VERSION}  "  20 70 1 
+    else
+        if  [ ${INSTALLED_VERSION} != ${ARDUINO_VERSION} ]; then
+       whiptail  --msgbox   "Newer version available  ${ARDUINO_VERSION}  "  20 70 1 
+        fi
+    fi
+else
+cd ~
+# Go ahead and install
+# Get the correct file based on the #{ARDUINO_VERSION} variable 
+# wget to stdout instead of saving and deleting tar file.
+wget  https://downloads.arduino.cc/arduino-${ARDUINO_VERSION}-linuxarm.tar.xz -O - | tar xJf -
+cd ~/arduino-${ARDUINO_VERSION}
+# Install a desktop shortcut
+./install.sh
+
+# Protoneer changes for GPIO reset of Arduino
+cp $RESOURCES/avrdude-rpi/autoreset2560 ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
+cp $RESOURCES/avrdude-rpi/autoreset328 ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
+cp $RESOURCES/avrdude-rpi/avrdude-autoreset  ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
+# Substitute in avrdude-autoreset for the version of Arduino we just installed
+envsubst < ${RESOURCES}/avrdude-rpi/avrdude-autoreset >~/arduino-${ARDUINO_VERSION}/avrdude
+# update version in avrdude-autoreset
+mv ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude-original
+ln -s ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude-autoreset ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude
+
+chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude
+chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/autoreset328
+chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/autoreset2560
+
+ fi
+}
+#-------------------------------------------------
+function do_bcnc() {
+TITLE="bCNC"
+bCNC_INSTALL_DIR="bCNC"
+# No download need, install via pip
+whiptail --msgbox --title "$TITLE" '
+this option will perform the following actions:   
+
+	- installs python version of bCNC
+	- creates configuration for default tty
+	- creates Desktop shortcut' 20 70 1
+
+cd ~
+# Install python version
+if [ -d "${bCNC_INSTALL_DIR}" ]; then
+    QUERY=$(whiptail  --yesno --title="$TITLE" --yes-button NO --no-button YES  'bCNC already installed. Do you want to reinstall? 
+
+	 -WARNING: any saved bCNC configurations may be lost '  20 70 1 3>&1 1>&2 2>&3; echo $?)
+fi
+if [ $QUERY = 1 ] || [ ! -d "${bCNC_INSTALL_DIR}" ]; then 
+	mkdir -p ${bCNC_INSTALL_DIR}
+        sudo pip2 install --upgrade bCNC
+	if [  ! -d .bCNC ]; then
+	cat >~/.bCNC <<EOF
+[Connection]
+port = /dev/ttyAMA0
+openserial = 1
+EOF
+	fi
+        cp ${RESOURCES}/shortcuts/bCNC.Desktop ~/Desktop
+    fi
+}
+#-------------------------------------------------
+function do_ugs() {
+TITLE="UniversalGcodeSender"
+UGS_INSTALL_DIR="UGS"
+UGS_DOWNLOAD="https://raw.githubusercontent.com/winder/builds/master/UniversalGCodeSender/UniversalGcodeSender-v1.0.9.zip"
+whiptail --msgbox  --title "$TITLE" '
+this option will perform the following actions:   
+
+        - checks for installation of UGS 
+        - downloads and install UGS
+        - checks for installation of Java JRE/SDK.
+	- creates Desktop shortcut.' 20 70 1 3>&1 1>&2 2>&3
+
+# Home again
+cd ~
+if [ -d  "${UGS_INSTALL_DIR}" ]; then
+    # it may be installed so give option to reinstall
+    QUERY=$(whiptail --yesno --yes-button NO --no-button YES --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
+fi
+if [ $QUERY = 1 ] || [ ! -d "${UGS_INSTALL_DIR}" ]; then
+mkdir -p ${UGS_INSTALL_DIR}
+cd ${UGS_INSTALL_DIR}
+# Can't wget to stdout for zip files :-(
+wget ${UGS_DOWNLOAD}
+UGS_ARCHIVE=$(basename ${UGS_DOWNLOAD})
+# Force overwrite  for re-install
+unzip -o ${UGS_ARCHIVE}
+rm ${UGS_ARCHIVE}
+chmod +x start.sh
+cp ${RESOURCES}/shortcuts/UGS.Desktop ~/Desktop
+fi
+# Check for java
+java_install
+}
+#-------------------------------------------------
+function do_chillipepr() {
+TITLE="ChiliPeppr"
+CHI_INSTALL_DIR="ChiliPeppr"
+CH_DOWNLOAD="https://github.com/chilipeppr/serial-port-json-server/releases/download/v1.96/serial-port-json-server-1.96_linux_arm.tar.gz"
+whiptail --msgbox  --title "$TITLE" '
+this option will perform the following actions:   
+
+        - checks for installation of ChiliPeppr 
+        - downloads and install ChiliPeppr for grbl.
+	- adds starup script to /etc/init.d.
+        - checks for installation of Java JRE/SDK.
+	- creates Desktop shortcut.' 20 70 1 3>&1 1>&2 2>&3
+
+# Always start at home
+cd ~
+# Installed into ~/ChiliPeppr
+if [ -d  "${CHI_INSTALL_DIR}" ]; then
+    # it may be installed so give option to reinstall
+    QUERY=$(whiptail --yesno --yes-button NO --no-button YES --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
+fi
+if [ $QUERY = 1 ] || [ ! -d "${CHI_INSTALL_DIR}" ]; then
+    mkdir -p ${CHI_INSTALL_DIR} # silently fails if directory exists
+    cd ${CHI_INSTALL_DIR}
+    # stop the service if running
+    sudo /etc/init.d/serial-port-json-server stop
+    # No saved tar file
+    wget  ${CH_DOWNLOAD} -O - |tar xz
+    cd serial-port-json-server*
+    chmod 777 serial-port-json-server
+    sudo ./serial-port-json-server -createstartupscript 2>/dev/null
+fi
+}
+
+#======================================================================
+# Start here for main loop
+#
+# Check installed OS is buster
+INSTALLED_OS_VER=$(lsb_release -c|cut -d : -f 2 |xargs)
+if [ "$INSTALLED_OS_VER"  !=  "$REQUIRED_OS_VER" ]; then
+
+echo " pi-install has only been tested with buster, not $INSTALLED_OS_VER"
+exit 1
+fi
+# Don't run as root
+if [ $(id -u) -eq 0 ]; then
+  echo "pi-install  should not be run as root. Run it as 'pi' \n"
+  exit 1
+fi
+# Check if 3B+ (ArmV7)
+CPU_VERSION=$(cat /proc/cpuinfo |grep 'model name'| tail -1|cut -d ' ' -f 3)
+if [ "$CPU_VERSION"  !=  "ARMv7" ]; then
+  whiptail  --msgbox  '
+    NOTE:  laserweb4 requires a later version of nodejs than is provided by
+    the Rapbian repositoy so nodejs is loaded from the nodesource PPA. This 
+    repository is only supported for ARMv7 preocessors i.e. Raspbeey Pi 3B+
+    or later. You can stil proceed with this install but you will not be
+    able to isntall Laserweb4 via pi-install' 20 60 1
+fi
+calc_wt_size
+
+while true; do
+FUNCTION=$(whiptail  --title "$MENU_TITLE" --menu  "Select an option" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+"1 " "Information about this script" \
+"2 " "Configure the pi for use with the Pi Hat" \
+"3 " "Install Laserweb4 ." \
+"4 " "Install latest Arduino IDE ." \
+"5 " "Install ChiliPeppr ." \
+"6 " "Install Universal gcode sender ." \
+"7 " "Install bCNC ." \
+"8 " "List software installed via this script." \
+  3>&1 1>&2 2>&3)
+
+RET=$?
+    if [ $RET -eq 1 ]; then
+      exit
+    elif [ $RET -eq 0 ]; then
+case "$FUNCTION" in
+  1\ *) do_about ;;
+  2\ *) do_setup ;;
+  3\ *) do_laserweb ;;
+  4\ *) do_arduino_install ;;
+  5\ *) do_chillipepr ;;
+  6\ *) do_ugs ;;
+  7\ *) do_bcnc ;;
+  8\ *) do_list ;;
+  *) whiptail  --msgbox  "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail  --msgbox  "There was a problem running option $FUNCTION \ 
+Check the log for details" 20 60 1
+fi
+done

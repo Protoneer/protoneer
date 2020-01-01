@@ -1,0 +1,47 @@
+# GeoffS Fri 27 Dec 14:35:45 AEDT 2019
+# From RPI-CNC-Config-Scripts
+
+# TODO  
+Team Viewer - WOn't install withut Qt5
+Image size shrunk to 1.1 GB (Buster full) - https://github.com/Drewsif/PiShrink.git
+RPI-Serial script no longer used - functions now part of pi-install
+Candle - not investigated
+
+# Manualupdates 
+---------------
+bCNC - auto connect to ttyAMA0 is configured (/home/pi/.bCNC)
+auto arrange icons - can;t find an option for this
+desktop background to black (chose an image instead :-)
+Arduino set verbatim - ??
+
+000-UpdateClean.sh
+------------------
+not required for this Buster image
+apt-get -y remove --purge libreoffice-*
+apt-get -y remove --purge wolfram-engine
+apt-get install --no-install-recommends xserver-xorg -y
+apt-get install --no-install-recommends xinit -y
+apt-get install raspberrypi-ui-mods -y
+apt-get install xrdp -y - optional 
+apt autoremove and apt update are run more than once during pi-install
+
+001-GeneralSetup.sh
+-------------------
+All done from setup option in pi-install
+
+004-install-node.sh
+------------------
+node is now installed from nodesource PPA
+
+_RPi3-Serial-Config.sh
+----------------------
+All done via seup option in pi-install
+
+All sofware packages (bCNC, Laserweb, Chilliepepr, UGS, cncjs) are installed via
+options in pi-install. Latest versions as of this date.
+
+Still to do
+-----------
+
+Test the arduino/avrdude firmware loading. (my Pi died so can't check this)
+Put all the commes and other tests into a single directory - for advanced users only.
