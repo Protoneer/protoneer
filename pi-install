@@ -2,16 +2,15 @@
 #
 # GeoffS - Hobart Makers Inc : Thu 26 Dec 19:53:28 AEDT 2019
 #
-# Re-write of pi install script for Protoneer Pi Hat mainly for Laserweb
+# Re-write of pi install script for Protoneer Pi RPI-CNC mainly for Laserweb
 # install for Hobart Makers 
 # Changed to use whiptail for a gui. Lots of bits of raspi-config used here :-)
 #
-# All software normally installed by the RPI-CNC scripts is covered
-# except cncjs which seems to have a problem with the version of nodejs
-# installed for laserweb
-#----------------------------------------------------------------------
+# All software normally installed by the RPI-CNC scripts is covered.
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Set variables we need later.
-MENU_TITLE="Protoneer Pi Hat Installation" 
+MENU_TITLE="Protoneer Pi RPI_CNC Installation" 
 JAVA_VER="openjdk-9-jre"
 OS_VER="buster"
 # Not all Protoneer resouces are required.
@@ -61,27 +60,18 @@ function do_about() {
 #-------------------------------------------------
 function do_nodejs() {
 # Check if npm/node are installed. If not, install it.
-# versions in the Debian repository are not the latest but seem to work OK
-# with Laserweb4. Warnings will be displayed during install of npm/nodejs.
-# Solution to this is to install from the nodesource PPA - see 
-# alternative do_nodejs function
+# Versions in the Debian repository are not the latest so the
+# solution to this is to install from the nodesource PPA .
 
-# Install nodejs and npm - See if they are already installed
-#hash npm 2>/dev/null
-#type npm 2>/dev/null
-#if [ $? != 0 ]; then
-#    sudo apt -y install npm
-#   NPM_VER=$(npm -v 2>/dev/null)
-#fi
+# First a check to see if nodejs is installed and at what version
+# There should be an option to removce an older version and then
+# install from nodesource PPA 
+# Version 11.15.00 seem to be OK for laserweb4, no errors during compile
+# and works with both ARMv6 and ARMv7 CPU.
 
-hash node 2>/dev/null
-type node 2>/dev/null
-if [ $?  =  1 ]; then
-    sudo apt -y install nodejs
-   NODE_VER=$(node -v)
-fi
-unset QUERY
-
+#curl -sL https://deb.nodesource.com/setup_11.x | sudo -E bash 
+#sudo apt install -y nodejs
+echo do_nodejs
 }
 #--------------------------------------------------
 function do_list () {
@@ -89,7 +79,7 @@ TITLE="Protoneer Pi setup"
 SOFTWARE_INSTALLED=""
 cd ~
 # Current list of possible options
-SOFTWARE_OPTIONS=" arduino* bCNC ChiliPeppr lw.comm-server UGS "
+SOFTWARE_OPTIONS=" arduino* bCNC cncjs ChiliPeppr lw.comm-server UGS "
 
 for sw in  $SOFTWARE_OPTIONS
 do
@@ -358,7 +348,24 @@ if [ "$QUERY" = 0 ] || [ ! -d "${CHI_INSTALL_DIR}" ]; then
 fi
 cp ${RESOURCES}/shortcuts/ChiliPeppr.Desktop ~/Desktop
 }
+#------------------------------------------------------
+do_cncjs () {
+TITLE="cncjs"
+# Installed into /usr/lib/node_modules/cncjs but make a placeholder directory
+# in /home/pi for the list function.
+CNCJS_INSTALL_DIR="cncjs"
+cd ~
+if [ -d  "${CNCJS_INSTALL_DIR}" ]; then
+    # it may be installed so give option to reinstall
+    QUERY=$(whiptail --yesno --defaultno --title "$TITLE" "$TITLE is already installed, do you want to reinstall?" 20 70 1 3>&1 1>&2 2>&3; echo $?)
+fi
+if [ "$QUERY" = 0 ] || [ ! -d "${CNCJS_INSTALL_DIR}" ]; then
+    mkdir -p  $CNCJS_INSTALL_DIR
+    sudo npm install -g cncjs@latest --unsafe-perm
+    cp ${RESOURCES}/shortcuts/cncjs.Desktop ~/Desktop
+fi
 
+}
 #======================================================================
 # Start here for main loop
 #
@@ -376,26 +383,20 @@ if [ $(id -u) -eq 0 ]; then
 fi
 # Check if 3B+ (ArmV7)
 CPU_VERSION=$(cat /proc/cpuinfo |grep 'model name'| tail -1|cut -d ' ' -f 3)
-if [ "$CPU_VERSION"  !=  "ARMv7" ]; then
-  whiptail  --msgbox  '
-    NOTE:  laserweb4 requires a later version of nodejs than is provided by
-    the Rapbian repositoy so nodejs is loaded from the nodesource PPA. This 
-    repository is only supported for ARMv7 preocessors i.e. Raspbeey Pi 3B+
-    or later. You can stil proceed with this install but you will not be
-    able to isntall Laserweb4 via pi-install' 20 60 1
-fi
+
 calc_wt_size
 
 while true; do
 FUNCTION=$(whiptail  --title "$MENU_TITLE" --menu  "Select an option" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
 "1 " "Information about this script" \
-"2 " "Configure the pi for use with the Pi Hat" \
+"2 " "Configure the pi for use with the RPI_CNC Hat" \
 "3 " "Install Laserweb4 ." \
 "4 " "Install latest Arduino IDE ." \
 "5 " "Install ChiliPeppr ." \
 "6 " "Install Universal gcode sender ." \
 "7 " "Install bCNC ." \
-"8 " "List software installed via this script." \
+"8 " "Install cncjs ." \
+"9 " "List software installed via this script." \
   3>&1 1>&2 2>&3)
 
 RET=$?
@@ -410,7 +411,8 @@ case "$FUNCTION" in
   5\ *) do_chillipepr ;;
   6\ *) do_ugs ;;
   7\ *) do_bcnc ;;
-  8\ *) do_list ;;
+  8\ *) do_cncjs ;;
+  9\ *) do_list ;;
   *) whiptail  --msgbox  "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail  --msgbox  "There was a problem running option $FUNCTION \ 
 Check the log for details" 20 60 1
