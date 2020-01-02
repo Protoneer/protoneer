@@ -69,9 +69,14 @@ function do_nodejs() {
 # Version 11.15.00 seem to be OK for laserweb4, no errors during compile
 # and works with both ARMv6 and ARMv7 CPU.
 
-#curl -sL https://deb.nodesource.com/setup_11.x | sudo -E bash 
-#sudo apt install -y nodejs
-echo do_nodejs
+if [ ! -e /etc/apt/sources.list.d/nodesource.list ]; then
+curl -sL https://deb.nodesource.com/setup_11.x | sudo -E bash 
+fi
+hash node 2>/dev/null
+node -v 2>/dev/null 
+if [ $? !- 0 ]; then
+sudo apt install -y nodejs
+fi
 }
 #--------------------------------------------------
 function do_list () {
