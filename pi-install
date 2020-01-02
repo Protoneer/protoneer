@@ -381,8 +381,6 @@ if [ $(id -u) -eq 0 ]; then
   echo "pi-install  should not be run as root. Run it as 'pi' \n"
   exit 1
 fi
-# Check if 3B+ (ArmV7)
-CPU_VERSION=$(cat /proc/cpuinfo |grep 'model name'| tail -1|cut -d ' ' -f 3)
 
 calc_wt_size
 
