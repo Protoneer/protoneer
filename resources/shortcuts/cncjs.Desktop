@@ -2,7 +2,8 @@
 Name=Start CNC.JS(Run once, wait for terminal window to open)
 Version=1.0
 Comment=Launches application
-Exec=/home/pi/.npm/bin/cnc
+Exec=/usr/lib/node_modules/cncjs/bin/cnc
+Tooltip=Run once, wait for terminal window to open
 Icon=/usr/share/pixmaps/openbox.xpm
 Terminal=true
 Type=Application

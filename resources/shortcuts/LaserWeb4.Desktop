@@ -2,7 +2,7 @@
 Version=1.0
 Type=Application
 Name=LaserWeb4 Server
-Comment=LaserWeb4 Server
-Exec=/home/pi/RPI-CNC-Config-Scripts/resources/scripts/RunLaserWeb4.sh
+Comment=LaserWeb4 Server should be started via systemctl
+Exec=/home/pi/protoneer/resources/scripts/RunLaserWeb4.sh
 Terminal=true
 Name[en_US]=Laserweb4
