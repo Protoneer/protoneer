@@ -194,7 +194,6 @@ function do_arduino_version() {
   git remote add origin https://github.com/arduino/Arduino.git >/dev/null
   # Get the releases as sort them, Last one is the latest
   ARDUINO_VERSION=$(git ls-remote --tags --refs --sort=version:refname  | grep --regexp='refs/tags/[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*.*' |  cut -d '/' -f 3  |tail -1)
-#  export ARDUINO_VERSION # for envsubst
   cd ..
   rm -rf ProtoArd
   whiptail  --msgbox  --title "$TITLE"  "Latest Arduino IDE : $ARDUINO_VERSION "  20 70 1 
@@ -205,6 +204,7 @@ function do_arduino_install() {
 TITLE="Arduino IDE"
 # Used to check current/latest and to get download path
 ARDUINO_VERSION="1.8.10"
+export ARDUINO_VERSION # for envsubst
 whiptail --msgbox --title "$TITLE" '
 this option will perform the following actions:   
 
@@ -238,12 +238,12 @@ cd ~/arduino-${ARDUINO_VERSION}
 # Protoneer changes for GPIO reset of Arduino
 cp $RESOURCES/avrdude-rpi/autoreset2560 ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
 cp $RESOURCES/avrdude-rpi/autoreset328 ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
-cp $RESOURCES/avrdude-rpi/avrdude-autoreset  ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
-# Substitute in avrdude-autoreset for the version of Arduino we just installed
-envsubst < ${RESOURCES}/avrdude-rpi/avrdude-autoreset >~/arduino-${ARDUINO_VERSION}/avrdude
-# update version in avrdude-autoreset
+#cp $RESOURCES/avrdude-rpi/avrdude-autoreset  ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/
 mv ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude-original
-ln -s ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude-autoreset ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude
+# update version in avrdude-autoreset
+# Substitute in avrdude-autoreset for the version of Arduino we just installed
+envsubst < ${RESOURCES}/avrdude-rpi/avrdude-autoreset >~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude
+#ln -s ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude-autoreset ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude
 
 chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/avrdude
 chmod +x ~/arduino-${ARDUINO_VERSION}/hardware/tools/avr/bin/autoreset328
