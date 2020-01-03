@@ -74,7 +74,7 @@ curl -sL https://deb.nodesource.com/setup_11.x | sudo -E bash
 fi
 hash node 2>/dev/null
 node -v 2>/dev/null 
-if [ $? !- 0 ]; then
+if [ $? != 0 ]; then
 sudo apt install -y nodejs
 fi
 }
