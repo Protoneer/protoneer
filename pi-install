@@ -356,6 +356,14 @@ cp ${RESOURCES}/shortcuts/ChiliPeppr.Desktop ~/Desktop
 #------------------------------------------------------
 do_cncjs () {
 TITLE="cncjs"
+whiptail --msgbox  --title "$TITLE" '
+this option will perform the following actions:   
+
+	- check if nodejs/npm is installed
+        - checks for installation of cncjs
+        - downloads and install cncjs
+	- creates Desktop shortcut.' 20 70 1 3>&1 1>&2 2>&3
+
 # Installed into /usr/lib/node_modules/cncjs but make a placeholder directory
 # in /home/pi for the list function.
 CNCJS_INSTALL_DIR="cncjs"
